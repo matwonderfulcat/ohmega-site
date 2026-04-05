@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OHMÉGA | Électricien Bègles & Bordeaux Métropole</title>
+    <!-- Tailwind CSS pour la structure -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- GSAP pour les animations -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <!-- Leaflet pour la carte -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Fontes -->
+    <link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --dark-cyan: #0d3238; 
+            --electric-blue: #59b6d8; 
+            --bg-sand: #e6e0d4; 
+            --accent-glow: rgba(89, 182, 216, 0.4);
+        }
+
+        body {
+            background-color: var(--bg-sand);
+            color: var(--dark-cyan);
+            font-family: 'Space Grotesk', sans-serif;
+            overflow-x: hidden;
+            cursor: crosshair;
+        }
+
+        h1, h2, .font-sync {
+            font-family: 'Syncopate', sans-serif;
+            text-transform: uppercase;
+        }
+
+        /* Effet de grain de fond */
+        .noise {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            opacity: 0.05;
+            z-index: 9999;
+            background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)"/></svg>');
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-sand); }
+        ::-webkit-scrollbar-thumb { background: var(--dark-cyan); border-radius: 10px; }
+
+        .scanline {
+            width: 100%;
+            height: 2px;
+            background: var(--electric-blue);
+            position: absolute;
+            opacity: 0.1;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .tech-grid {
+            background-size: 40px 40px;
+            background-image: radial-gradient(circle, var(--dark-cyan) 1px, transparent 1px);
+            opacity: 0.1;
+        }
+
+        .btn-ohm {
+            position: relative;
+            padding: 1rem 2.5rem;
+            border: 1px solid var(--dark-cyan);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            display: inline-block;
+            text-align: center;
+        }
+        .btn-ohm:hover {
+            background: var(--dark-cyan);
+            color: var(--bg-sand);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .parallax-text {
+            font-size: clamp(4rem, 15vw, 20rem);
+            line-height: 0.8;
+            letter-spacing: -0.05em;
+            white-space: nowrap;
+            opacity: 0.07;
+            user-select: none;
+        }
+
+        .glass-card {
+            background: rgba(230, 224, 212, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(13, 50, 56, 0.1);
+        }
+
+        #map {
+            height: 500px;
+            width: 100%;
+            filter: grayscale(100%) invert(90%) contrast(90%);
+            border: 1px solid var(--dark-cyan);
+            z-index: 1;
+        }
+
+        .logo-container {
+            width: 300px;
+            height: 300px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            filter: drop-shadow(0 0 25px var(--accent-glow));
+        }
+        .logo-img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="noise"></div>
+    <div class="scanline" id="scanline"></div>
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 p-6 flex justify-between items-center mix-blend-difference text-[#e6e0d4]">
+        <div class="font-sync font-bold text-xl tracking-tighter">Ω OHMÉGA</div>
+        <div class="hidden md:flex gap-8 text-xs font-sync tracking-widest">
+            <a href="#hero" class="hover:opacity-50 transition">Flux</a>
+            <a href="#services" class="hover:opacity-50 transition">Systèmes</a>
+            <a href="#zone" class="hover:opacity-50 transition">Secteur</a>
+            <a href="#contact" class="hover:opacity-50 transition">Interface</a>
+        </div>
+        <div class="text-[10px] font-sync hidden lg:block opacity-70">BÈGLES // 33130</div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="hero" class="min-h-screen flex flex-col items-center justify-center relative px-6 pt-20">
+        <div class="tech-grid absolute inset-0"></div>
+        
+        <div class="logo-container relative mb-8" id="main-logo">
+            <!-- Utilisation du fichier logo fourni -->
+            <img src="Ohméga .png" alt="Logo Ohméga" class="logo-img" onerror="this.src='https://cdn-icons-png.flaticon.com/512/616/616491.png'; this.style.opacity='0.5'">
+        </div>
+
+        <div class="text-center z-10">
+            <h1 class="text-5xl md:text-8xl font-bold mb-4 tracking-tighter overflow-hidden">
+                <span class="inline-block translate-y-full" id="hero-title">FLUX ÉLECTRIQUE</span>
+            </h1>
+            <p class="max-w-md mx-auto text-sm uppercase tracking-[0.3em] opacity-70 mb-8" id="hero-sub">
+                Artisan indépendant basé à Bègles. <br>Interventions CUB & Rayon de 50km.
+            </p>
+            <div class="flex flex-wrap justify-center gap-4 opacity-0" id="hero-btns">
+                <a href="#contact" class="btn-ohm text-xs font-sync">Prendre rendez-vous</a>
+                <a href="tel:0600000000" class="btn-ohm text-xs font-sync bg-[#0d3238] text-[#e6e0d4]">Urgence 24h/24</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Parallax Text -->
+    <div class="relative py-20 overflow-hidden border-y border-[#0d32381a]">
+        <div class="parallax-text font-sync" id="float-text-1">L'ÉNERGIE DE PROXIMITÉ</div>
+    </div>
+
+    <!-- Services -->
+    <section id="services" class="min-h-screen py-32 px-6 relative">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex flex-col md:flex-row justify-between items-end mb-20">
+                <div class="max-w-xl">
+                    <h2 class="text-4xl md:text-6xl font-bold mb-6">Expertise Unique</h2>
+                    <p class="text-lg opacity-80">Un interlocuteur unique pour tous vos projets électriques. Précision béglaise sans sous-traitance.</p>
+                </div>
+                <div class="text-right text-xs font-sync opacity-40 mt-6 md:mt-0">
+                    BÈGLES // BORDEAUX // VILLENAVE // TALENCE
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="glass-card p-10 group relative overflow-hidden service-card">
+                    <div class="text-electric-blue mb-8 font-sync text-4xl">01</div>
+                    <h3 class="text-2xl font-bold mb-4 font-sync">Rénovation</h3>
+                    <p class="opacity-70 mb-8">Mise aux normes des échoppes et appartements anciens. Sécurité garantie.</p>
+                    <div class="h-1 w-0 bg-electric-blue transition-all duration-500 group-hover:w-full"></div>
+                </div>
+
+                <div class="glass-card p-10 group relative overflow-hidden service-card">
+                    <div class="text-electric-blue mb-8 font-sync text-4xl">02</div>
+                    <h3 class="text-2xl font-bold mb-4 font-sync">Dépannage</h3>
+                    <p class="opacity-70 mb-8">Intervention rapide sur tableau, court-circuit et pannes réseau 7j/7.</p>
+                    <div class="h-1 w-0 bg-electric-blue transition-all duration-500 group-hover:w-full"></div>
+                </div>
+
+                <div class="glass-card p-10 group relative overflow-hidden service-card">
+                    <div class="text-electric-blue mb-8 font-sync text-4xl">03</div>
+                    <h3 class="text-2xl font-bold mb-4 font-sync">Connectivité</h3>
+                    <p class="opacity-70 mb-8">Installation réseaux RJ45, Wi-Fi et domotique moderne (Smart Home).</p>
+                    <div class="h-1 w-0 bg-electric-blue transition-all duration-500 group-hover:w-full"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Map & Zone -->
+    <section id="zone" class="py-24 px-6 bg-[#0d3238] text-[#e6e0d4] relative overflow-hidden">
+        <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <div>
+                <h2 class="text-4xl md:text-6xl font-bold mb-8 font-sync">Zone de Flux</h2>
+                <p class="text-xl opacity-80 mb-8">
+                    Basé à <span class="text-electric-blue font-bold">Bègles</span>, j'interviens dans un rayon de <span class="text-electric-blue font-bold">50km</span> incluant :
+                </p>
+                <ul class="grid grid-cols-2 gap-4 font-sync text-xs opacity-60 uppercase tracking-widest">
+                    <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 bg-electric-blue"></span> Bègles / Sud-Bordeaux</li>
+                    <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 bg-electric-blue"></span> Bassin d'Arcachon</li>
+                    <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 bg-electric-blue"></span> Libournais</li>
+                    <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 bg-electric-blue"></span> Langonnais</li>
+                    <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 bg-electric-blue"></span> Médoc / Blayais</li>
+                    <li class="flex items-center gap-2"><span class="w-1.5 h-1.5 bg-electric-blue"></span> Entre-deux-Mers</li>
+                </ul>
+            </div>
+            <div class="relative">
+                <div id="map" class="shadow-2xl"></div>
+                <div class="absolute -bottom-4 -right-4 bg-electric-blue text-[#0d3238] p-4 font-sync text-[10px] z-10">
+                    COORDONNÉES: 44.8078° N, 0.5486° W
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Interface -->
+    <section id="contact" class="py-32 px-6">
+        <div class="max-w-4xl mx-auto glass-card p-8 md:p-16 border-2 border-dark-cyan">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+                <div>
+                    <h2 class="text-4xl font-bold mb-8 font-sync">Initialiser</h2>
+                    <div class="space-y-6">
+                        <div>
+                            <span class="block text-[10px] font-sync opacity-50">STATUT</span>
+                            <span class="text-sm">Artisan Indépendant</span>
+                        </div>
+                        <div>
+                            <span class="block text-[10px] font-sync opacity-50">CONTACT DIRECT</span>
+                            <span class="text-xl font-bold">06 XX XX XX XX</span>
+                        </div>
+                        <div>
+                            <span class="block text-[10px] font-sync opacity-50">EMAIL</span>
+                            <span class="text-lg underline">contact@votre-domaine.fr</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-col gap-4">
+                    <input type="text" placeholder="NOM_CLIENT" class="bg-transparent border-b border-dark-cyan p-4 focus:outline-none focus:border-electric-blue transition">
+                    <input type="text" placeholder="VILLE" class="bg-transparent border-b border-dark-cyan p-4 focus:outline-none focus:border-electric-blue transition">
+                    <textarea rows="4" placeholder="DESCRIPTION_PROJET" class="bg-transparent border-b border-dark-cyan p-4 focus:outline-none focus:border-electric-blue transition"></textarea>
+                    <button class="btn-ohm mt-4 font-sync">TRANSMETTRE LA REQUÊTE</button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="p-10 border-t border-[#0d32381a] flex flex-col md:flex-row justify-between items-center text-[10px] font-sync opacity-50">
+        <div>© 2024 OHMÉGA ARTISAN ÉLECTRICIEN // BÈGLES // GIRONDE</div>
+        <div class="mt-4 md:mt-0 uppercase">Rayon d'action 50km</div>
+    </footer>
+
+    <script>
+        gsap.registerPlugin(ScrollTrigger);
+
+        window.onload = () => {
+            // Animation Hero
+            const tl = gsap.timeline();
+            tl.to("#hero-title", { y: 0, duration: 1.2, ease: "power4.out" })
+              .to("#hero-sub", { opacity: 0.7, duration: 1, ease: "power2.out" }, "-=0.8")
+              .to("#hero-btns", { opacity: 1, y: -20, duration: 0.8 }, "-=0.5")
+              .from("#main-logo", { scale: 0.8, opacity: 0, duration: 1.5, ease: "power3.out" }, "-=1.5");
+
+            // Animation Scanline
+            gsap.to("#scanline", {
+                top: "100%",
+                duration: 4,
+                repeat: -1,
+                ease: "none"
+            });
+
+            // Parallax Effet
+            gsap.to("#float-text-1", {
+                scrollTrigger: {
+                    trigger: "#float-text-1",
+                    start: "top bottom",
+                    end: "bottom top",
+                    scrub: 2
+                },
+                x: -500
+            });
+
+            // Carte Leaflet - Centrée Bègles - Dezoomée à 9
+            const map = L.map('map', {
+                scrollWheelZoom: false,
+                zoomControl: false
+            }).setView([44.8078, -0.5486], 9); 
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+            const icon = L.divIcon({
+                className: 'marker-pulse',
+                html: `<div style="background-color: #59b6d8; width: 16px; height: 16px; border-radius: 50%; border: 3px solid #0d3238; box-shadow: 0 0 10px #59b6d8;"></div>`,
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+            });
+
+            L.marker([44.8078, -0.5486], {icon: icon}).addTo(map)
+                .bindPopup('<b class="font-sync">OHMÉGA</b><br>Basé à Bègles')
+                .openPopup();
+
+            // Cercle 50km (50000 mètres)
+            L.circle([44.8078, -0.5486], {
+                color: '#59b6d8',
+                fillColor: '#59b6d8',
+                fillOpacity: 0.1,
+                radius: 50000 
+            }).addTo(map);
+
+            // Interaction Logo
+            const logo = document.getElementById('main-logo');
+            document.addEventListener('mousemove', (e) => {
+                const moveX = (e.clientX - window.innerWidth / 2) * 0.02;
+                const moveY = (e.clientY - window.innerHeight / 2) * 0.02;
+                gsap.to(logo, { x: moveX, y: moveY, rotation: moveX * 0.1, duration: 0.5 });
+            });
+        };
+    </script>
+</body>
+</html>
